@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Order Confirmed — KARTIFY</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<style>
+  .confetti-piece {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    top: -10px;
+    border-radius: 2px;
+    animation: fall linear forwards;
+    z-index: 9998;
+    pointer-events: none;
+  }
+
+  @keyframes fall {
+    0% { top: -10px; transform: rotate(0deg) translateX(0); opacity: 1; }
+    80% { opacity: 1; }
+    100% { top: 110vh; transform: rotate(720deg) translateX(var(--drift)); opacity: 0; }
+  }
+
+  .payment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--green);
+    color: var(--white);
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 2px;
+    margin-top: 10px;
+  }
+
+  .timeline {
+    display: flex;
+    justify-content: space-between;
+    margin: 28px 0;
+    position: relative;
+  }
+
+  .timeline::before {
+    content: '';
+    position: absolute;
+    top: 14px;
+    left: 10%;
+    right: 10%;
+    height: 2px;
+    background: var(--black);
+  }
+
+  .timeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .timeline-dot {
+    width: 28px;
+    height: 28px;
+    border: 2px solid var(--black);
+    border-radius: 50%;
+    background: var(--white);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+  }
+
+  .timeline-dot.done { background: var(--yellow); }
+  .timeline-dot.active { background: var(--black); color: var(--yellow); }
+
+  .timeline-lbl {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--gray-600);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  body { background: var(--gray-100); }
+</style>
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<div class="success-page">
+  <div class="success-card">
+
+    <div class="success-banner">
+      <div class="success-check">✓</div>
+      <h1 class="success-title">ORDER<br>CONFIRMED!</h1>
+      <p class="success-sub">Thank you — your order is being prepared with care.</p>
+      <div class="payment-badge">✓ Payment Successful</div>
+    </div>
+
+    <div class="success-body">
+
+      <!-- Order ID -->
+      <div class="order-id-row">
+        <div>
+          <div class="order-id-lbl">Order ID</div>
+          <div class="order-id-val" id="order-id">KRT-XXXXXXXX</div>
+        </div>
+        <div style="text-align:right">
+          <div class="order-id-lbl">Order Date</div>
+          <div class="order-id-val" id="order-date" style="color:var(--white)"></div>
+        </div>
+      </div>
+
+      <!-- Meta -->
+      <div class="order-meta">
+        <div class="meta-item">
+          <div class="meta-lbl">Customer</div>
+          <div class="meta-val" id="order-name">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-lbl">Payment</div>
+          <div class="meta-val" id="order-method">—</div>
+        </div>
+        <div class="meta-item">
+          <div class="meta-lbl">Est. Delivery</div>
+          <div class="meta-val" id="order-delivery">5-7 Days</div>
+        </div>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline">
+        <div class="timeline-step">
+          <div class="timeline-dot done">✓</div>
+          <div class="timeline-lbl">Order<br>Placed</div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot active">📦</div>
+          <div class="timeline-lbl">Packing</div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot">🚚</div>
+          <div class="timeline-lbl">Shipped</div>
+        </div>
+        <div class="timeline-step">
+          <div class="timeline-dot">🏠</div>
+          <div class="timeline-lbl">Delivered</div>
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="success-items-title">ITEMS ORDERED</div>
+      <div id="success-items"></div>
+
+      <div class="success-total">
+        <span class="success-total-lbl">TOTAL PAID</span>
+        <span class="success-total-val" id="order-total">₹0</span>
+      </div>
+
+      <!-- Actions -->
+      <div class="success-actions">
+        <a href="index.html" class="btn-primary">SHOP MORE</a>
+        <a href="#" class="btn-ghost" onclick="printOrder()">DOWNLOAD RECEIPT</a>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div id="footer-root"></div>
+
+<script src="data.js"></script>
+<script>
+document.getElementById('navbar-root').innerHTML = renderNavbar('');
+document.getElementById('footer-root').innerHTML = renderFooter();
+
+function renderSuccess() {
+  const order = JSON.parse(localStorage.getItem('kartify-order') || 'null');
+
+  if (!order) {
+    // No order data — redirect or show fallback
+    document.getElementById('order-id').textContent = 'KRT-DEMO1234';
+    document.getElementById('order-date').textContent = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    document.getElementById('order-name').textContent = 'Guest User';
+    document.getElementById('order-method').textContent = 'Card';
+    document.getElementById('order-total').textContent = '₹0';
+    document.getElementById('success-items').innerHTML = '<p style="color:var(--gray-400);font-size:0.85rem">No items found. <a href="index.html">Start shopping!</a></p>';
+    return;
+  }
+
+  document.getElementById('order-id').textContent = order.id;
+  document.getElementById('order-date').textContent = order.date;
+  document.getElementById('order-name').textContent = order.name;
+  document.getElementById('order-delivery').textContent = '5–7 Days';
+
+  const methodLabels = {
+    card: 'Credit/Debit Card',
+    upi: 'UPI',
+    cod: 'Cash on Delivery',
+    netbanking: 'Net Banking'
+  };
+  document.getElementById('order-method').textContent = methodLabels[order.method] || order.method;
+  document.getElementById('order-total').textContent = formatPrice(parseInt(order.total));
+
+  const itemsHtml = (order.items || []).map(item => {
+    const p = PRODUCTS.find(pr => pr.id === item.id);
+    if (!p) return '';
+    return `<div class="success-item-row">
+      <span class="success-item-name">${p.emoji} ${p.name}</span>
+      <span class="success-item-qty">×${item.qty}</span>
+      <span class="success-item-price">${formatPrice(p.price * item.qty)}</span>
+    </div>`;
+  }).join('');
+
+  document.getElementById('success-items').innerHTML = itemsHtml || '<p style="color:var(--gray-400);font-size:0.85rem">No items.</p>';
+}
+
+function printOrder() {
+  window.print();
+}
+
+// Confetti!
+function launchConfetti() {
+  const colors = ['#f0e000', '#0d0d0d', '#1a8c52', '#e03030', '#f7f5f0', '#c8bb00'];
+  for (let i = 0; i < 80; i++) {
+    setTimeout(() => {
+      const piece = document.createElement('div');
+      piece.className = 'confetti-piece';
+      const drift = (Math.random() - 0.5) * 200;
+      piece.style.cssText = `
+        left: ${Math.random() * 100}vw;
+        background: ${colors[Math.floor(Math.random() * colors.length)]};
+        width: ${6 + Math.random() * 10}px;
+        height: ${6 + Math.random() * 10}px;
+        --drift: ${drift}px;
+        animation-duration: ${2 + Math.random() * 2}s;
+        animation-delay: ${Math.random() * 0.5}s;
+        border-radius: ${Math.random() > 0.5 ? '50%' : '2px'};
+      `;
+      document.body.appendChild(piece);
+      setTimeout(() => piece.remove(), 3500);
+    }, i * 30);
+  }
+}
+
+renderSuccess();
+launchConfetti();
+</script>
+</body>
+</html>

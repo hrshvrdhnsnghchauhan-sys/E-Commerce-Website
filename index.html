@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>KARTIFY — Bold Fashion Store</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-tag">New Collection · 2025</div>
+    <h1 class="hero-title">DRESS<br><em>BOLD.</em><br>LIVE<br>LOUDER.</h1>
+    <p class="hero-sub">Clothing and accessories built for people who move fast, look sharp, and never blend in.</p>
+    <a href="#shop" class="hero-cta">
+      Shop Now
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat-item">
+      <div class="hero-stat-num">12+</div>
+      <div class="hero-stat-lbl">Curated Products</div>
+    </div>
+    <div class="hero-stat-item">
+      <div class="hero-stat-num">4.7★</div>
+      <div class="hero-stat-lbl">Average Rating</div>
+    </div>
+    <div class="hero-stat-item">
+      <div class="hero-stat-num">FREE</div>
+      <div class="hero-stat-lbl">Shipping above ₹2000</div>
+    </div>
+  </div>
+</section>
+
+<!-- FILTER BAR -->
+<div class="filter-bar" id="shop">
+  <div class="search-box">
+    <span class="search-icon">⌕</span>
+    <input type="text" id="search-input" placeholder="Search products…" oninput="applyFilters()">
+  </div>
+  <select class="filter-select" id="sort-select" onchange="applyFilters()">
+    <option value="default">Sort: Featured</option>
+    <option value="price-asc">Price: Low → High</option>
+    <option value="price-desc">Price: High → Low</option>
+    <option value="rating">Top Rated</option>
+  </select>
+  <div class="filter-chips">
+    <button class="chip active" data-cat="all" onclick="filterCat('all', this)">All</button>
+    <button class="chip" data-cat="clothing" onclick="filterCat('clothing', this)">Clothing</button>
+    <button class="chip" data-cat="footwear" onclick="filterCat('footwear', this)">Footwear</button>
+    <button class="chip" data-cat="accessories" onclick="filterCat('accessories', this)">Accessories</button>
+    <button class="chip" data-cat="bags" onclick="filterCat('bags', this)">Bags</button>
+  </div>
+  <span class="result-count" id="result-count">12 products</span>
+</div>
+
+<!-- PRODUCT GRID -->
+<section class="shop-section">
+  <div class="product-grid" id="product-grid"></div>
+</section>
+
+<div id="footer-root"></div>
+
+<script src="data.js"></script>
+<script>
+// Inject navbar & footer
+document.getElementById('navbar-root').innerHTML = renderNavbar('shop');
+document.getElementById('footer-root').innerHTML = renderFooter();
+
+let currentCat = 'all';
+let addedIds = new Set(getCart().map(i => i.id));
+
+function filterCat(cat, btn) {
+  currentCat = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function starsHtml(r) {
+  const full = Math.round(r);
+  return Array.from({length: 5}, (_, i) => i < full ? '★' : '☆').join('');
+}
+
+function applyFilters() {
+  const search = document.getElementById('search-input').value.toLowerCase();
+  const sort = document.getElementById('sort-select').value;
+
+  let products = PRODUCTS.filter(p => {
+    const matchCat = currentCat === 'all' || p.category === currentCat;
+    const matchSearch = p.name.toLowerCase().includes(search) ||
+                        p.desc.toLowerCase().includes(search) ||
+                        p.category.includes(search);
+    return matchCat && matchSearch;
+  });
+
+  if (sort === 'price-asc') products.sort((a, b) => a.price - b.price);
+  if (sort === 'price-desc') products.sort((a, b) => b.price - a.price);
+  if (sort === 'rating') products.sort((a, b) => b.rating - a.rating);
+
+  document.getElementById('result-count').textContent = `${products.length} product${products.length !== 1 ? 's' : ''}`;
+  renderGrid(products);
+}
+
+function renderGrid(products) {
+  const grid = document.getElementById('product-grid');
+  if (products.length === 0) {
+    grid.innerHTML = `<div class="empty-state">
+      <div class="empty-state-icon">🔍</div>
+      <h3>NO RESULTS FOUND</h3>
+      <p>Try a different search term or category filter.</p>
+    </div>`;
+    return;
+  }
+
+  const cart = getCart();
+  addedIds = new Set(cart.map(i => i.id));
+
+  grid.innerHTML = products.map((p, idx) => {
+    const inCart = addedIds.has(p.id);
+    return `
+    <div class="product-card" style="animation-delay:${idx * 0.04}s">
+      ${p.badge ? `<div class="product-badge ${p.badge}">${p.badge === 'sale' ? 'SALE' : 'NEW'}</div>` : ''}
+      <div class="product-img-wrap">
+        <div class="product-emoji-img">${p.emoji}</div>
+      </div>
+      <div class="product-info">
+        <div class="product-category">${p.category}</div>
+        <div class="product-name">${p.name}</div>
+        <div class="product-desc">${p.desc}</div>
+        <div class="product-rating">
+          <span class="stars">${starsHtml(p.rating)}</span>
+          <span>${p.rating} (${p.reviews})</span>
+        </div>
+      </div>
+      <div class="product-footer">
+        <div class="product-price">
+          ${p.origPrice ? `<span class="orig">${formatPrice(p.origPrice)}</span>` : ''}
+          ${formatPrice(p.price)}
+        </div>
+        <button class="add-to-cart-btn ${inCart ? 'added' : ''}"
+          id="btn-${p.id}"
+          onclick="handleAddToCart(${p.id}, this)">
+          ${inCart ? '✓ ADDED' : '+ CART'}
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function handleAddToCart(id, btn) {
+  addToCart(id);
+  btn.classList.add('added');
+  btn.textContent = '✓ ADDED';
+}
+
+// Initial render
+applyFilters();
+</script>
+</body>
+</html>

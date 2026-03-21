@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Your Cart — KARTIFY</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="navbar-root"></div>
+
+<!-- PAGE HEADER -->
+<div class="page-header">
+  <div class="breadcrumb">
+    <a href="index.html">Shop</a>
+    <span class="breadcrumb-sep">/</span>
+    <span>Cart</span>
+  </div>
+  <h1>YOUR <span>CART</span></h1>
+</div>
+
+<div class="cart-layout">
+
+  <!-- CART ITEMS -->
+  <div class="cart-items-section">
+    <div class="section-label" id="items-label">Loading…</div>
+    <div id="cart-items-list"></div>
+  </div>
+
+  <!-- ORDER SUMMARY -->
+  <div class="order-summary">
+    <div class="summary-card">
+      <div class="summary-header">ORDER SUMMARY</div>
+      <div class="summary-body">
+        <div class="summary-row">
+          <span>Subtotal</span>
+          <span id="summary-subtotal">₹0</span>
+        </div>
+        <div class="summary-row">
+          <span>Shipping</span>
+          <span id="summary-shipping">FREE</span>
+        </div>
+        <div class="summary-row">
+          <span>Tax (GST 18%)</span>
+          <span id="summary-tax">₹0</span>
+        </div>
+        <div class="summary-row">
+          <span>Discount</span>
+          <span id="summary-discount" style="color:var(--green)">-₹0</span>
+        </div>
+
+        <div class="coupon-row">
+          <input type="text" class="coupon-input" id="coupon-input" placeholder="COUPON CODE">
+          <button class="coupon-btn" onclick="applyCoupon()">APPLY</button>
+        </div>
+        <div id="coupon-msg" style="font-family:var(--font-mono);font-size:0.7rem;margin:-10px 0 12px;"></div>
+
+        <div class="summary-row total">
+          <span>Total</span>
+          <span id="summary-total">₹0</span>
+        </div>
+
+        <button class="checkout-btn" onclick="goCheckout()" id="checkout-btn" disabled>CHECKOUT →</button>
+        <p class="checkout-note">🔒 SECURE CHECKOUT · FREE RETURNS · 7-DAY EXCHANGE</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="footer-root"></div>
+
+<script src="data.js"></script>
+<script>
+document.getElementById('navbar-root').innerHTML = renderNavbar('cart');
+document.getElementById('footer-root').innerHTML = renderFooter();
+
+const COUPON_CODES = {
+  'SAVE10': 10,
+  'FIRST20': 20,
+  'KARTIFY15': 15
+};
+
+let discountPct = 0;
+
+function renderCart() {
+  const cart = getCart();
+  const label = document.getElementById('items-label');
+  const list = document.getElementById('cart-items-list');
+  const checkoutBtn = document.getElementById('checkout-btn');
+
+  if (cart.length === 0) {
+    label.textContent = '0 items';
+    checkoutBtn.disabled = true;
+    list.innerHTML = `
+      <div class="cart-empty">
+        <div style="font-size:4rem">🛒</div>
+        <h3>CART IS EMPTY</h3>
+        <p>Looks like you haven't added anything yet.</p>
+        <a href="index.html" class="continue-btn">CONTINUE SHOPPING →</a>
+      </div>`;
+    updateSummary();
+    return;
+  }
+
+  const total = cart.reduce((s, i) => s + i.qty, 0);
+  label.textContent = `${total} item${total !== 1 ? 's' : ''}`;
+  checkoutBtn.disabled = false;
+
+  list.innerHTML = cart.map(item => {
+    const p = PRODUCTS.find(pr => pr.id === item.id);
+    if (!p) return '';
+    return `
+    <div class="cart-item" id="cart-item-${p.id}">
+      <div class="cart-item-img">${p.emoji}</div>
+      <div>
+        <div class="cart-item-cat">${p.category}</div>
+        <div class="cart-item-name">${p.name}</div>
+        <div class="qty-control">
+          <button class="qty-btn" onclick="changeQty(${p.id}, -1)">−</button>
+          <div class="qty-num" id="qty-${p.id}">${item.qty}</div>
+          <button class="qty-btn" onclick="changeQty(${p.id}, +1)">+</button>
+        </div>
+      </div>
+      <div class="cart-item-price">
+        <div class="cart-item-unit">${formatPrice(p.price)} each</div>
+        <div class="cart-item-total" id="price-${p.id}">${formatPrice(p.price * item.qty)}</div>
+        <button class="remove-btn" onclick="handleRemove(${p.id})">Remove</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  updateSummary();
+}
+
+function changeQty(id, delta) {
+  const cart = getCart();
+  const item = cart.find(i => i.id === id);
+  if (!item) return;
+  item.qty += delta;
+  if (item.qty <= 0) {
+    handleRemove(id);
+    return;
+  }
+  saveCart(cart);
+  // Update UI without full re-render
+  const p = PRODUCTS.find(pr => pr.id === id);
+  document.getElementById('qty-' + id).textContent = item.qty;
+  document.getElementById('price-' + id).textContent = formatPrice(p.price * item.qty);
+  updateSummary();
+  updateCartBadge();
+}
+
+function handleRemove(id) {
+  const el = document.getElementById('cart-item-' + id);
+  if (el) {
+    el.style.opacity = '0';
+    el.style.transform = 'translateX(-20px)';
+    el.style.transition = 'all 0.25s ease';
+    setTimeout(() => {
+      removeFromCart(id);
+      renderCart();
+    }, 250);
+  } else {
+    removeFromCart(id);
+    renderCart();
+  }
+}
+
+function updateSummary() {
+  const subtotal = getCartTotal();
+  const shipping = subtotal >= 2000 ? 0 : 199;
+  const tax = Math.round(subtotal * 0.18);
+  const discount = Math.round(subtotal * discountPct / 100);
+  const total = subtotal + shipping + tax - discount;
+
+  document.getElementById('summary-subtotal').textContent = formatPrice(subtotal);
+  document.getElementById('summary-shipping').textContent = shipping === 0 ? 'FREE' : formatPrice(shipping);
+  document.getElementById('summary-tax').textContent = formatPrice(tax);
+  document.getElementById('summary-discount').textContent = '-' + formatPrice(discount);
+  document.getElementById('summary-total').textContent = formatPrice(total);
+
+  // Save total for checkout
+  localStorage.setItem('kartify-total', total);
+}
+
+function applyCoupon() {
+  const code = document.getElementById('coupon-input').value.trim().toUpperCase();
+  const msg = document.getElementById('coupon-msg');
+  if (COUPON_CODES[code]) {
+    discountPct = COUPON_CODES[code];
+    msg.textContent = `✓ Code "${code}" applied — ${discountPct}% OFF!`;
+    msg.style.color = 'var(--green)';
+    updateSummary();
+  } else {
+    msg.textContent = '✗ Invalid coupon code.';
+    msg.style.color = 'var(--red)';
+  }
+}
+
+function goCheckout() {
+  const cart = getCart();
+  if (cart.length === 0) return;
+  window.location.href = 'checkout.html';
+}
+
+renderCart();
+</script>
+</body>
+</html>
