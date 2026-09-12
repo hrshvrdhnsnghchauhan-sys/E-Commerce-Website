@@ -1,4 +1,4 @@
-#  E-Commerce Website (Frontend)
+#  E-Commerce Website 
 
 ##  Description
 E-Commerce Website is a modern frontend project built using HTML, CSS, and JavaScript. It allows users to browse products, search and filter items, and add them to a shopping cart. It also includes a cart page and a fake payment success screen for a real-world experience.
